@@ -8,6 +8,8 @@ import gzip
 from sklearn.cluster import AgglomerativeClustering
 from pathlib import Path
 from itertools import combinations
+from presto.IO import getOutputHandle
+import shutil
 
 default_missing_chars = set(['-', '.', 'n', 'N'])
 
@@ -156,3 +158,21 @@ def Detect_Contamination(fastq_file_list, umi='umi', outfile='contamination_reco
         df1["sample_id"]=Path(a).name.split("_")[0]   # This is an arbitrary way to find sample_id, may not apply to other cases
         df2["sample_id"]=Path(b).name.split("_")[0]
         pairwise_contamination(df1, df2, umi=umi, outfile=outfile )
+
+
+def save_contaminated_pass_fastq(contamination_table_path, fastq_file_list, out_label="contamination-pass"):
+    contamination_table = pd.read_csv(contamination_table_path, sep='\t')
+    comtamination_samples=set(list(contamination_table['Sample_A'])+list(contamination_table['Sample_B']))
+    for sample, input_fastq in zip([Path(a).name.split("_")[0] for a in fastq_file_list],fastq_file_list):
+        out_handle = getOutputHandle(input_fastq, out_label=out_label)
+        out_fastq = out_handle.name
+        if sample in comtamination_samples:
+            contaminated_seq =[x.split(',') for x in contamination_table[contamination_table['Sample_A']==sample]['A_Contaminated_seqs']] + \
+                                   [x.split(',') for x in contamination_table[contamination_table['Sample_B']==sample]['B_Contaminated_seqs']]
+            contaminated_seq = set([x for sublist in contaminated_seq for x in sublist])
+            with open(out_fastq, "w") as out:
+               for record in SeqIO.parse(input_fastq, "fastq"):
+                   if record.id not in contaminated_seq:
+                      SeqIO.write(record, out, "fastq")
+        else:
+            shutil.copyfile(input_fastq, out_fastq)
