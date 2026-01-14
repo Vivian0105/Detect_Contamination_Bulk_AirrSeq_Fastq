@@ -94,22 +94,29 @@ def pairwise_contamination(df1, df2, umi='umi', mismatch_threshold=1, outfile='c
                 df1.loc[df1['seq_id'].isin(contaminated_seq),'contaminated']=True
                 df2.loc[df2['seq_id'].isin(contaminated_seq), 'contaminated']=True
                         
-    # append contamination table to outfile if there is contamination
+        # append contamination table to outfile
     if(df1_n_contaminated+df1_n_contaminated>0):
         contaminated_table = pd.DataFrame([{"Sample_A" : df1['sample_id'].unique().item(),
                        "Sample_B" : df2['sample_id'].unique().item(),
                        "N_Contamination_A" : df1_n_contaminated,
                         "N_Contamination_B" : df2_n_contaminated,
                         "A_Contaminated_seqs" : ",".join(df1[df1['contaminated']==True]['seq_id']),
-                        "B_Contaminated_seqs" : ",".join(df2[df2['contaminated']==True]['seq_id']) 
+                        "B_Contaminated_seqs" : ",".join(df2[df2['contaminated']==True]['seq_id']),
+                        "N_seqs_A": df1.shape[0],
+                        "N_seqs_B": df2.shape[0]                   
                       }])
-        contaminated_table.to_csv(
+    else:
+        headers = ["Sample_A", "Sample_B", "N_Contamination_A", "N_Contamination_B","A_Contaminated_seqs","B_Contaminated_seqs","N_seqs_A","N_seqs_B"]
+        contaminated_table = pd.DataFrame(columns=headers)
+        
+    contaminated_table.to_csv(
             outfile,
             sep="\t",
             mode="a",
             header=not os.path.exists(outfile),
             index=False
          )
+
 
 
 def _open_text(path, mode="rt"):
